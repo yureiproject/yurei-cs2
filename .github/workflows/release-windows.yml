@@ -1,0 +1,40 @@
+name: Publish Windows release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check tag matches app version
+        shell: pwsh
+        run: |
+          $appVersion = (Get-Content package.json | ConvertFrom-Json).version
+          if ("v$appVersion" -ne $env:TAG_NAME) {
+            throw "Tag $env:TAG_NAME must match package.json version v$appVersion"
+          }
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+
+      - name: Build and publish Windows installer
+        run: npm run release:win
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
