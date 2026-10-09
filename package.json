@@ -1,6 +1,6 @@
 {
   "name": "yurei-cs2-team",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Yurei",
   "main": "desktop/main.cjs",
   "private": true,
@@ -21,23 +21,8 @@
     "appId": "com.yurei.cs2team",
     "productName": "Yurei",
     "asar": true,
-    "directories": {
-      "output": "release"
-    },
-    "files": [
-      "index.html",
-      "supabase-client.js",
-      "yurei.png",
-      "yurei.ico",
-      "desktop/**/*",
-      "package.json",
-      "!server.py",
-      "!redline.sqlite3",
-      "!supabase/**/*",
-      "!site/**/*",
-      "!desktop/installer-work/**/*",
-      "!release/**/*"
-    ],
+    "directories": { "output": "release" },
+    "files": ["index.html", "supabase-client.js", "yurei.png", "yurei.ico", "desktop/**/*", "package.json", "!server.py", "!redline.sqlite3", "!supabase/**/*", "!site/**/*", "!desktop/installer-work/**/*", "!release/**/*"],
     "win": {
       "icon": "yurei.ico",
       "target": ["nsis"],
@@ -51,10 +36,6 @@
       "createStartMenuShortcut": true,
       "shortcutName": "Yurei"
     },
-    "publish": {
-      "provider": "github",
-      "owner": "yureiproject",
-      "repo": "yurei-cs2"
-    }
+    "publish": { "provider": "github", "owner": "yureiproject", "repo": "yurei-cs2" }
   }
 }
