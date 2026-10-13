@@ -321,13 +321,13 @@ if (window.yureiDesktop) {
     const state = status?.state || 'checking';
     blocker.style.display = state === 'current' || state === 'unavailable' ? 'none' : 'grid';
     retry.style.display = state === 'error' ? '' : 'none';
-    install.style.display = state === 'downloaded' ? '' : 'none';
+    install.style.display = 'none';
     progress.parentElement.style.display = state === 'error' || state === 'downloaded' ? 'none' : '';
     progress.style.width = state === 'downloading' ? `${Math.max(0, Math.min(100, Number(status.percent) || 0))}%` : state === 'available' ? '8%' : '0';
     if (state === 'checking') message.textContent = 'Yurei vérifie si une version plus récente est disponible. Tu pourras utiliser l’application dès que cette vérification sera terminée.';
     else if (state === 'available') message.textContent = `La version ${status.version || ''} est requise. Téléchargement automatique en cours…`;
     else if (state === 'downloading') message.textContent = `La version ${status.version || ''} est requise. Téléchargement : ${Math.round(Number(status.percent) || 0)} %.`;
-    else if (state === 'downloaded') message.textContent = `La version ${status.version || ''} est prête. Redémarre Yurei pour terminer l’installation et continuer.`;
+    else if (state === 'downloaded') message.textContent = `La version ${status.version || ''} est prête. Installation et redémarrage automatiques…`;
     else if (state === 'error') message.textContent = `Impossible de vérifier ou télécharger la mise à jour. L’application reste bloquée jusqu’à l’installation de la version requise. ${status.message || ''}`;
   };
   retry.onclick = async () => { retry.disabled = true; paintMandatoryUpdate({state:'checking'}); await window.yureiDesktop.checkForUpdates(); retry.disabled = false; };
