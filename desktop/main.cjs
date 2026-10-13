@@ -1,5 +1,6 @@
-const { app, BrowserWindow, ipcMain, shell, protocol, net } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, protocol, net, Notification } = require('electron');
 const path = require('node:path');
+const fs = require('node:fs');
 const { pathToFileURL } = require('node:url');
 const { autoUpdater } = require('electron-updater');
 
@@ -8,6 +9,23 @@ const contentScheme = 'yurei-app';
 const indexPath = path.join(app.getAppPath(), 'index.html');
 let mainWindow;
 let updateStatus = { state: 'idle' };
+const preferencePath = () => path.join(app.getPath('userData'), 'preferences.json');
+function readPreferences() {
+  try {
+    const saved = JSON.parse(fs.readFileSync(preferencePath(), 'utf8'));
+    return { launchAtStartup: saved.launchAtStartup !== false, notifications: saved.notifications !== false };
+  } catch {
+    return { launchAtStartup: true, notifications: true };
+  }
+}
+function writePreferences(patch) {
+  const current = readPreferences();
+  const next = { ...current, ...patch };
+  fs.mkdirSync(app.getPath('userData'), { recursive: true });
+  fs.writeFileSync(preferencePath(), JSON.stringify(next, null, 2), 'utf8');
+  if (process.platform === 'win32') app.setLoginItemSettings({ openAtLogin: next.launchAtStartup });
+  return next;
+}
 
 protocol.registerSchemesAsPrivileged([{
   scheme: contentScheme,
@@ -116,6 +134,8 @@ if (!gotLock) {
 
   app.setAsDefaultProtocolClient(scheme);
   app.whenReady().then(() => {
+    const preferences = readPreferences();
+    if (process.platform === 'win32') app.setLoginItemSettings({ openAtLogin: preferences.launchAtStartup });
     protocol.handle(contentScheme, request => {
       const { host, pathname } = new URL(request.url);
       if (host !== 'desktop') return new Response('Not found', { status: 404 });
@@ -160,6 +180,21 @@ if (!gotLock) {
   });
   ipcMain.handle('app:install-update', () => {
     if (updateStatus.state === 'downloaded') autoUpdater.quitAndInstall();
+  });
+  ipcMain.handle('app:preferences:get', () => readPreferences());
+  ipcMain.handle('app:preferences:set', (_event, patch) => {
+    if (!patch || typeof patch !== 'object') throw new Error('Préférences invalides');
+    const allowed = {};
+    if (typeof patch.launchAtStartup === 'boolean') allowed.launchAtStartup = patch.launchAtStartup;
+    if (typeof patch.notifications === 'boolean') allowed.notifications = patch.notifications;
+    return writePreferences(allowed);
+  });
+  ipcMain.handle('app:notify', (_event, payload) => {
+    if (!readPreferences().notifications || !Notification.isSupported()) return false;
+    const title = String(payload?.title || 'Yurei').slice(0, 80);
+    const body = String(payload?.body || '').slice(0, 220);
+    new Notification({ title, body, icon: path.join(app.getAppPath(), 'yurei.ico') }).show();
+    return true;
   });
 
   app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });

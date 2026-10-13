@@ -11,11 +11,15 @@ Application Windows pour l’équipe Yurei. L’application utilise Supabase Aut
 
 ## Créer le premier compte admin
 
-1. Dans Supabase Dashboard → SQL Editor, ouvre supabase/authorize_first_admin.sql et remplace REPLACE-WITH-YOUR-ADMIN-EMAIL par ton adresse.
-2. Dans Authentication → URL Configuration → Redirect URLs, ajoute yurei://auth/callback et yurei://reset-password.
-3. Installe une fois Yurei depuis la release GitHub, puis crée un compte avec cette adresse et confirme l’e-mail.
-4. Choisis Créer le premier compte administrateur, puis configure ton profil FACEIT, ton SteamID64 et les clés développeur FACEIT et Leetify.
+1. Dans Supabase Dashboard → SQL Editor, ouvre `supabase/authorize_first_admin.sql` et remplace le placeholder par ton adresse.
+2. Dans Authentication → URL Configuration → Redirect URLs, ajoute `yurei://auth/callback` et `yurei://reset-password`.
+3. Dans Authentication → Providers → Email, désactive Confirm email si tu veux créer les comptes sans validation par e-mail. Ce réglage est côté Supabase Auth et ne peut pas être changé par l’application.
+4. Crée le compte de l’adresse autorisée. Le premier admin est contrôlé par la liste SQL; l’application ne propose aucun bouton public pour créer un admin.
 5. Dans Paramètres, génère un code d’invitation à usage unique pour chaque joueur. Le code expire après 7 jours.
+
+## Appliquer les permissions et la synchronisation live
+
+Après le schéma de base, exécute `supabase/migrations/20261013_permissions_realtime.sql` dans Supabase Dashboard → SQL Editor. Cette migration fixe les cinq rôles, les droits de création d’événements, l’accès d’écriture admin aux médias et l’abonnement Realtime. Elle doit être appliquée avant d’utiliser ces nouvelles autorisations.
 
 ## Installer et lancer en développement
 

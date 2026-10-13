@@ -5,6 +5,9 @@ contextBridge.exposeInMainWorld('yureiDesktop', {
   getUpdateStatus: () => ipcRenderer.invoke('app:update-status'),
   checkForUpdates: () => ipcRenderer.invoke('app:check-update'),
   installUpdate: () => ipcRenderer.invoke('app:install-update'),
+  getPreferences: () => ipcRenderer.invoke('app:preferences:get'),
+  setPreferences: patch => ipcRenderer.invoke('app:preferences:set', patch),
+  notify: payload => ipcRenderer.invoke('app:notify', payload),
   authRedirectUrl: () => 'yurei://auth/callback',
   passwordRecoveryUrl: () => 'yurei://reset-password',
   onUpdateStatus: callback => {

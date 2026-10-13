@@ -18,19 +18,19 @@ create table if not exists public.team_members (
   player_id text not null,
   display_name text not null check (char_length(display_name) between 1 and 60),
   role text not null default 'player' check (role in ('admin','player')),
-  player_role text not null default 'Rifler',
+  player_role text not null default 'Entry',
   avatar_path text,
   created_at timestamptz not null default now(),
   unique (team_id, player_id)
 );
 
 -- Safe to rerun if the earlier schema was already installed.
-alter table public.team_members add column if not exists player_role text not null default 'Rifler';
+alter table public.team_members add column if not exists player_role text not null default 'Entry';
 alter table public.team_members add column if not exists avatar_path text;
 do $$ begin
   if not exists (select 1 from pg_constraint where conname='team_members_player_role_check') then
     alter table public.team_members add constraint team_members_player_role_check
-      check (player_role in ('IGL','Entry','AWPer','Support','Lurker','Rifler','Coach','Substitute'));
+      check (player_role in ('IGL','Support','Lurker','AWPer','Entry'));
   end if;
 end $$;
 
@@ -291,7 +291,7 @@ begin
     raise exception 'Réservé à l’administrateur';
   end if;
   
-  if new_player_role not in ('IGL','Entry','AWPer','Support','Lurker','Rifler','Coach','Substitute') then
+  if new_player_role not in ('IGL','Support','Lurker','AWPer','Entry') then
     raise exception 'Rôle joueur invalide';
   end if;
   update public.team_members set
@@ -595,7 +595,7 @@ begin
   if team is null or not exists(select 1 from public.team_members where user_id=auth.uid() and role='admin') then
     raise exception 'Réservé à l’administrateur';
   end if;
-  if new_player_role not in ('IGL','Entry','AWPer','Support','Lurker','Rifler','Coach','Substitute') then
+  if new_player_role not in ('IGL','Support','Lurker','AWPer','Entry') then
     raise exception 'Rôle joueur invalide';
   end if;
   update public.team_members set
