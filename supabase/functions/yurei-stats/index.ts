@@ -153,7 +153,32 @@ Deno.serve(async (req: Request) => {
         ]);
         return json({ details, stats });
       }
-      return json({ details: await upstream(`${leetifyBase}/v2/matches/${safeId}`, leetifyKey) });
+      let details: any = null;
+      let primaryError: unknown = null;
+      try {
+        details = await upstream(`${leetifyBase}/v2/matches/${safeId}`, leetifyKey);
+      } catch (error) {
+        primaryError = error;
+      }
+      const dataSource = String(body.dataSource || "").trim().toLowerCase();
+      const dataSourceId = String(body.dataSourceId || "").trim();
+      const hasPlayerStats = (value: any) => Array.isArray(value?.stats)
+        ? value.stats.length > 0
+        : Array.isArray(value?.stats?.players) && value.stats.players.length > 0;
+      // Some Leetify history entries carry a source-specific ID instead of the
+      // match UUID expected by /v2/matches/{gameId}. Retry via its documented
+      // data-source lookup when that UUID lookup fails or has no player rows.
+      if (dataSource && dataSourceId && dataSource.length <= 64 && dataSourceId.length <= 128 &&
+          /^[a-z0-9_-]+$/.test(dataSource) && (primaryError || !hasPlayerStats(details))) {
+        try {
+          const bySource = await upstream(`${leetifyBase}/v2/matches/${encodeURIComponent(dataSource)}/${encodeURIComponent(dataSourceId)}`, leetifyKey);
+          if (hasPlayerStats(bySource) || !details) details = bySource;
+        } catch (error) {
+          if (!details) throw error;
+        }
+      }
+      if (!details && primaryError) throw primaryError;
+      return json({ details });
     }
 
     if (action !== "team") return json({ error: "Action inconnue" }, 400);
@@ -212,4 +237,5 @@ Deno.serve(async (req: Request) => {
     return json({ error: message }, 502);
   }
 });
+
 
