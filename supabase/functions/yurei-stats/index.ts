@@ -33,27 +33,53 @@ async function upstream(url: string, key: string) {
     headers._leetify_key = cleanKey;
   }
   const response = await fetch(url, { headers, signal: AbortSignal.timeout(15000) });
+  const raw = await response.text();
+  let body: any;
+  try { body = raw ? JSON.parse(raw) : null; } catch { body = null; }
   if (!response.ok) {
     const provider = new URL(url).hostname === "open.faceit.com" ? "FACEIT" : "Leetify";
-    const raw = await response.text();
     let detail = "";
-    try {
-      const body = JSON.parse(raw);
-      detail = typeof body?.message === "string" ? body.message :
-        Array.isArray(body?.errors) ? body.errors.map((item: { message?: string }) => item?.message).filter(Boolean).join("; ") :
-        typeof body?.error === "string" ? body.error : "";
-    } catch { /* The upstream response was not JSON. */ }
+    detail = typeof body?.message === "string" ? body.message :
+      Array.isArray(body?.errors) ? body.errors.map((item: { message?: string }) => item?.message).filter(Boolean).join("; ") :
+      typeof body?.error === "string" ? body.error : "";
     throw new Error(`${provider} API HTTP ${response.status}${detail ? ` — ${detail.slice(0, 240)}` : ""}`);
   }
-  return await response.json();
+  if (body && typeof body === "object" && typeof body.error === "string") {
+    throw new Error(body.error.slice(0, 240));
+  }
+  return body;
+}
+
+async function leetifyProfile(steamId64: string, key: string) {
+  const cleanId = String(steamId64 || "").trim();
+  if (!/^[0-9]{17}$/.test(cleanId)) throw new Error("SteamID64 Leetify manquant ou invalide pour ce joueur.");
+  return await leetifyRequest("/v3/profile", cleanId, key);
+}
+
+async function leetifyMatches(steamId64: string, key: string) {
+  const cleanId = String(steamId64 || "").trim();
+  if (!/^[0-9]{17}$/.test(cleanId)) throw new Error("SteamID64 Leetify manquant ou invalide pour ce joueur.");
+  return await leetifyRequest("/v3/profile/matches", cleanId, key, { limit: "10" });
+}
+
+async function leetifyRequest(path: string, steamId64: string, key: string, extra: Record<string, string> = {}) {
+  const makeUrl = (identifier: string) => `${leetifyBase}${path}?${new URLSearchParams({ ...extra, [identifier]: steamId64 })}`;
+  try {
+    return await upstream(makeUrl("steam64_id"), key);
+  } catch (error) {
+    // The current Leetify API accepts both its Steam64 identifier and generic
+    // `id`; retry the alias only for the API's explicit missing-identifier error.
+    // This avoids masking authentication, privacy, or rate-limit failures.
+    if (!(error instanceof Error) || !/at least one identifier must be provided/i.test(error.message)) throw error;
+    return await upstream(makeUrl("id"), key);
+  }
 }
 
 async function checkProfiles(faceitKey: string, leetifyKey: string, nickname: string, steamId64: string) {
   const faceitUrl = `${faceitBase}/players?${new URLSearchParams({ nickname, game: "cs2" })}`;
-  const leetifyUrl = `${leetifyBase}/v3/profile?${new URLSearchParams({ steam64_id: steamId64 })}`;
   const [faceitResult, leetifyResult] = await Promise.allSettled([
     upstream(faceitUrl, faceitKey),
-    upstream(leetifyUrl, leetifyKey),
+    leetifyProfile(steamId64, leetifyKey),
   ]);
   const failures: string[] = [];
   if (faceitResult.status === "rejected") failures.push(faceitResult.reason instanceof Error ? faceitResult.reason.message : "FACEIT API indisponible");
@@ -156,8 +182,8 @@ Deno.serve(async (req: Request) => {
           // independently so a history error never hides valid profile stats.
           const steamId = profile.steam_id64;
           const [profileResult, matchesResult] = await Promise.allSettled([
-            upstream(leetifyBase + "/v3/profile?" + new URLSearchParams({ steam64_id: steamId }), leetifyKey),
-            upstream(leetifyBase + "/v3/profile/matches?" + new URLSearchParams({ steam64_id: steamId, limit: "10" }), leetifyKey),
+            leetifyProfile(steamId, leetifyKey),
+            leetifyMatches(steamId, leetifyKey),
           ]);
           if (profileResult.status === "rejected") {
             return { error: profileResult.reason instanceof Error ? profileResult.reason.message : "Leetify API indisponible" };
