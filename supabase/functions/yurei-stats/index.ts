@@ -50,7 +50,7 @@ async function upstream(url: string, key: string) {
 
 async function checkProfiles(faceitKey: string, leetifyKey: string, nickname: string, steamId64: string) {
   const faceitUrl = `${faceitBase}/players?${new URLSearchParams({ nickname, game: "cs2" })}`;
-  const leetifyUrl = `${leetifyBase}/v3/profile?${new URLSearchParams({ steamId: steamId64 })}`;
+  const leetifyUrl = `${leetifyBase}/v3/profile?${new URLSearchParams({ steam64_id: steamId64 })}`;
   const [faceitResult, leetifyResult] = await Promise.allSettled([
     upstream(faceitUrl, faceitKey),
     upstream(leetifyUrl, leetifyKey),
@@ -156,8 +156,8 @@ Deno.serve(async (req: Request) => {
           // independently so a history error never hides valid profile stats.
           const steamId = profile.steam_id64;
           const [profileResult, matchesResult] = await Promise.allSettled([
-            upstream(leetifyBase + "/v3/profile?" + new URLSearchParams({ steamId }), leetifyKey),
-            upstream(leetifyBase + "/v3/profile/matches?" + new URLSearchParams({ steamId, limit: "10" }), leetifyKey),
+            upstream(leetifyBase + "/v3/profile?" + new URLSearchParams({ steam64_id: steamId }), leetifyKey),
+            upstream(leetifyBase + "/v3/profile/matches?" + new URLSearchParams({ steam64_id: steamId, limit: "10" }), leetifyKey),
           ]);
           if (profileResult.status === "rejected") {
             return { error: profileResult.reason instanceof Error ? profileResult.reason.message : "Leetify API indisponible" };
