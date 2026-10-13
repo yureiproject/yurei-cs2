@@ -62,6 +62,20 @@ async function leetifyMatches(steamId64: string, key: string) {
   return await leetifyRequest("/v3/profile/matches", cleanId, key, { limit: "10" });
 }
 
+function matchRows(value: any): any[] {
+  if (Array.isArray(value)) return value;
+  if (!value || typeof value !== "object") return [];
+  for (const key of ["matches", "recent_matches", "items", "results", "data"]) {
+    const rows = value[key];
+    if (Array.isArray(rows)) return rows;
+    if (rows && typeof rows === "object") {
+      const nested = matchRows(rows);
+      if (nested.length) return nested;
+    }
+  }
+  return [];
+}
+
 async function leetifyRequest(path: string, steamId64: string, key: string, extra: Record<string, string> = {}) {
   const makeUrl = (identifier: string) => `${leetifyBase}${path}?${new URLSearchParams({ ...extra, [identifier]: steamId64 })}`;
   try {
@@ -215,14 +229,13 @@ Deno.serve(async (req: Request) => {
           }
           const profileData = profileResult.value;
           const matchesPayload = matchesResult.status === "fulfilled" ? matchesResult.value : null;
-          const matches = Array.isArray(matchesPayload)
-            ? matchesPayload
-            : Array.isArray(matchesPayload?.matches)
-              ? matchesPayload.matches
-              : Array.isArray(profileData?.recent_matches) ? profileData.recent_matches : [];
+          // The history endpoint may return an empty list while the profile
+          // already contains recent_matches. Prefer the non-empty source.
+          const matches = matchRows(matchesPayload);
+          const profileMatches = matchRows(profileData?.recent_matches);
           return {
             profile: profileData,
-            matches,
+            matches: matches.length ? matches : profileMatches,
             matchesError: matchesResult.status === "rejected"
               ? matchesResult.reason instanceof Error ? matchesResult.reason.message : "Historique Leetify indisponible"
               : null,
@@ -237,5 +250,4 @@ Deno.serve(async (req: Request) => {
     return json({ error: message }, 502);
   }
 });
-
 
