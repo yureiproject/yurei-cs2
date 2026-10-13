@@ -443,14 +443,18 @@ create policy team_media_read on storage.objects for select to authenticated
   using (bucket_id='redline-team-media' and (storage.foldername(name))[1]=public.current_team_id()::text);
 drop policy if exists team_media_upload on storage.objects;
 create policy team_media_upload on storage.objects for insert to authenticated
-  with check (bucket_id='redline-team-media' and (storage.foldername(name))[1]=public.current_team_id()::text);
+  with check (bucket_id='redline-team-media' and (storage.foldername(name))[1]=public.current_team_id()::text
+    and exists(select 1 from public.team_members where user_id=auth.uid() and team_id=public.current_team_id() and role='admin'));
 drop policy if exists team_media_update on storage.objects;
 create policy team_media_update on storage.objects for update to authenticated
-  using (bucket_id='redline-team-media' and (storage.foldername(name))[1]=public.current_team_id()::text)
-  with check (bucket_id='redline-team-media' and (storage.foldername(name))[1]=public.current_team_id()::text);
+  using (bucket_id='redline-team-media' and (storage.foldername(name))[1]=public.current_team_id()::text
+    and exists(select 1 from public.team_members where user_id=auth.uid() and team_id=public.current_team_id() and role='admin'))
+  with check (bucket_id='redline-team-media' and (storage.foldername(name))[1]=public.current_team_id()::text
+    and exists(select 1 from public.team_members where user_id=auth.uid() and team_id=public.current_team_id() and role='admin'));
 drop policy if exists team_media_delete on storage.objects;
 create policy team_media_delete on storage.objects for delete to authenticated
-  using (bucket_id='redline-team-media' and (storage.foldername(name))[1]=public.current_team_id()::text);
+  using (bucket_id='redline-team-media' and (storage.foldername(name))[1]=public.current_team_id()::text
+    and exists(select 1 from public.team_members where user_id=auth.uid() and team_id=public.current_team_id() and role='admin'));
 
 
 -- Dynamic member profiles: new roster entries are created when an invited user redeems a code.
@@ -618,3 +622,4 @@ grant execute on function public.admin_list_invites() to authenticated;
 grant execute on function public.admin_revoke_invite(uuid) to authenticated;
 grant execute on function public.join_team(text,text) to authenticated;
 grant execute on function public.admin_update_player(text,text,text,text) to authenticated;
+
