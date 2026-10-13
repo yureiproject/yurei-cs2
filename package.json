@@ -1,6 +1,6 @@
 {
   "name": "yurei-cs2-team",
-  "version": "1.0.15",
+  "version": "1.0.16",
   "description": "Yurei",
   "main": "desktop/main.cjs",
   "private": true,
@@ -60,5 +60,3 @@
     }
   }
 }
-
-
