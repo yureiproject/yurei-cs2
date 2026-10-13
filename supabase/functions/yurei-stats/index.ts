@@ -21,15 +21,18 @@ function firstKey(raw: string | undefined, prefix: string): string | undefined {
 }
 
 async function upstream(url: string, key: string) {
+  const cleanKey = key.trim().replace(/^Bearer\s+/i, "");
   const headers: Record<string, string> = {
     Accept: "application/json",
-    Authorization: `Bearer ${key}`,
+    Authorization: `Bearer ${cleanKey}`,
   };
   if (new URL(url).hostname === new URL(leetifyBase).hostname) {
-    // Leetify also accepts this header as an API-key credential.
-    headers._leetify_key = key;
+    // Leetify accepts either Authorization or _leetify_key. Send one credential
+    // header so whitespace or a pasted "Bearer " prefix cannot corrupt it.
+    delete headers.Authorization;
+    headers._leetify_key = cleanKey;
   }
-  const response = await fetch(url, { headers });
+  const response = await fetch(url, { headers, signal: AbortSignal.timeout(15000) });
   if (!response.ok) {
     const provider = new URL(url).hostname === "open.faceit.com" ? "FACEIT" : "Leetify";
     const raw = await response.text();
@@ -48,7 +51,16 @@ async function upstream(url: string, key: string) {
 async function checkProfiles(faceitKey: string, leetifyKey: string, nickname: string, steamId64: string) {
   const faceitUrl = `${faceitBase}/players?${new URLSearchParams({ nickname, game: "cs2" })}`;
   const leetifyUrl = `${leetifyBase}/v3/profile?${new URLSearchParams({ steamId: steamId64 })}`;
-  const [faceit, leetify] = await Promise.all([upstream(faceitUrl, faceitKey), upstream(leetifyUrl, leetifyKey)]);
+  const [faceitResult, leetifyResult] = await Promise.allSettled([
+    upstream(faceitUrl, faceitKey),
+    upstream(leetifyUrl, leetifyKey),
+  ]);
+  const failures: string[] = [];
+  if (faceitResult.status === "rejected") failures.push(faceitResult.reason instanceof Error ? faceitResult.reason.message : "FACEIT API indisponible");
+  if (leetifyResult.status === "rejected") failures.push(leetifyResult.reason instanceof Error ? leetifyResult.reason.message : "Leetify API indisponible");
+  if (failures.length) throw new Error(failures.join(" · "));
+  const faceit = faceitResult.value;
+  const leetify = leetifyResult.value;
   if (!faceit?.player_id) throw new Error("FACEIT ne renvoie aucun profil CS2 pour ce pseudo.");
   if (!leetify || typeof leetify !== "object") throw new Error("Leetify ne renvoie aucun profil pour ce SteamID64.");
   return { faceit, leetify };
@@ -174,3 +186,4 @@ Deno.serve(async (req: Request) => {
     return json({ error: message }, 502);
   }
 });
+

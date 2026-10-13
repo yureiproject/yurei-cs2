@@ -1,0 +1,32 @@
+name: Deploy Supabase stats function
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/functions/yurei-stats/**"
+      - ".github/workflows/deploy-supabase-stats.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-supabase-stats
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Deploy yurei-stats
+        run: supabase functions deploy yurei-stats --project-ref dziwedssqmojnhbsjslz
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+

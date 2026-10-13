@@ -8,7 +8,8 @@ const scheme = 'yurei';
 const contentScheme = 'yurei-app';
 const indexPath = path.join(app.getAppPath(), 'index.html');
 let mainWindow;
-let updateStatus = { state: 'idle' };
+const updateEnforcementEnabled = app.isPackaged && process.platform === 'win32';
+let updateStatus = { state: updateEnforcementEnabled ? 'checking' : 'unavailable' };
 const preferencePath = () => path.join(app.getPath('userData'), 'preferences.json');
 function readPreferences() {
   try {
@@ -150,7 +151,7 @@ if (!gotLock) {
     const query = parseAuthCallback(initialLink) || {};
     createWindow(query);
     app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
-    if (app.isPackaged && process.platform === 'win32') {
+    if (updateEnforcementEnabled) {
       autoUpdater.autoDownload = true;
       autoUpdater.autoInstallOnAppQuit = true;
       autoUpdater.on('checking-for-update', () => publishUpdateStatus('checking'));
@@ -159,7 +160,7 @@ if (!gotLock) {
       autoUpdater.on('download-progress', progress => publishUpdateStatus('downloading', { percent: Math.round(progress.percent) }));
       autoUpdater.on('update-downloaded', info => publishUpdateStatus('downloaded', { version: info.version }));
       autoUpdater.on('error', error => publishUpdateStatus('error', { message: error.message }));
-      setTimeout(() => autoUpdater.checkForUpdates().catch(error => publishUpdateStatus('error', { message: error.message })), 12000);
+      setTimeout(() => autoUpdater.checkForUpdates().catch(error => publishUpdateStatus('error', { message: error.message })), 1000);
     }
   });
 
@@ -199,3 +200,4 @@ if (!gotLock) {
 
   app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
 }
+
