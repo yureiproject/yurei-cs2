@@ -1,0 +1,40 @@
+name: Deploy Supabase stats function
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/functions/yurei-stats/**"
+      - ".github/workflows/deploy-supabase-stats.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-supabase-stats
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Install Supabase CLI
+        if: ${{ env.SUPABASE_ACCESS_TOKEN != '' }}
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      - name: Deploy yurei-stats
+        if: ${{ env.SUPABASE_ACCESS_TOKEN != '' }}
+        run: supabase functions deploy yurei-stats --project-ref dziwedssqmojnhbsjslz
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      - name: Explain missing deployment token
+        if: ${{ env.SUPABASE_ACCESS_TOKEN == '' }}
+        run: echo "::warning::The Edge Function was not redeployed automatically. Add SUPABASE_ACCESS_TOKEN in GitHub Actions secrets to enable future automatic Supabase deployments. The currently published function remains active."
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}

@@ -139,7 +139,7 @@ begin
   if team is null or not exists(select 1 from public.team_members where user_id=auth.uid() and role='admin') then
     raise exception 'Réservé à l’administrateur';
   end if;
-  if new_player_role not in ('IGL','Entry','AWPer','Support','Lurker','Rifler','Coach','Substitute') then
+  if new_player_role not in ('IGL','Support','Lurker','AWPer','Entry') then
     raise exception 'Rôle joueur invalide';
   end if;
   update public.team_members set
