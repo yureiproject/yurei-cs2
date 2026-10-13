@@ -158,7 +158,11 @@ if (!gotLock) {
       autoUpdater.on('update-available', info => publishUpdateStatus('available', { version: info.version }));
       autoUpdater.on('update-not-available', info => publishUpdateStatus('current', { version: info.version }));
       autoUpdater.on('download-progress', progress => publishUpdateStatus('downloading', { percent: Math.round(progress.percent) }));
-      autoUpdater.on('update-downloaded', info => publishUpdateStatus('downloaded', { version: info.version }));
+      autoUpdater.on('update-downloaded', info => {
+        publishUpdateStatus('downloaded', { version: info.version });
+        // Install mandatory updates in place and relaunch without clearing userData.
+        setTimeout(() => autoUpdater.quitAndInstall(true, true), 1200);
+      });
       autoUpdater.on('error', error => publishUpdateStatus('error', { message: error.message }));
       setTimeout(() => autoUpdater.checkForUpdates().catch(error => publishUpdateStatus('error', { message: error.message })), 1000);
     }
