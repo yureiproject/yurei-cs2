@@ -1,6 +1,6 @@
 {
   "name": "yurei-cs2-team",
-  "version": "1.0.17",
+  "version": "1.0.18",
   "description": "Yurei",
   "main": "desktop/main.cjs",
   "private": true,
@@ -36,7 +36,9 @@
       "!supabase/**/*",
       "!site/**/*",
       "!desktop/installer-work/**/*",
-      "!release/**/*"
+      "!release/**/*",
+      "local-map-media.js",
+      "assets/maps/**/*"
     ],
     "win": {
       "icon": "yurei.ico",
