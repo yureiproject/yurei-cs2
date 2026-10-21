@@ -140,11 +140,22 @@ if (!gotLock) {
     protocol.handle(contentScheme, request => {
       const { host, pathname } = new URL(request.url);
       if (host !== 'desktop') return new Response('Not found', { status: 404 });
-      const assetPath = pathname === '/' || pathname === '/index.html' ? indexPath
-        : pathname === '/supabase-client.js' ? path.join(app.getAppPath(), 'supabase-client.js')
-        : pathname === '/yurei.png' ? path.join(app.getAppPath(), 'yurei.png')
-        : null;
-      if (!assetPath) return new Response('Not found', { status: 404 });
+      let relativePath;
+      try {
+        relativePath = decodeURIComponent(pathname).replace(/^[/\\\\]+/, '') || 'index.html';
+      } catch {
+        return new Response('Not found', { status: 404 });
+      }
+      const appRoot = path.resolve(app.getAppPath());
+      const assetPath = path.resolve(appRoot, relativePath);
+      if (assetPath !== appRoot && !assetPath.startsWith(appRoot + path.sep)) {
+        return new Response('Not found', { status: 404 });
+      }
+      try {
+        if (!fs.statSync(assetPath).isFile()) return new Response('Not found', { status: 404 });
+      } catch {
+        return new Response('Not found', { status: 404 });
+      }
       return net.fetch(pathToFileURL(assetPath).toString());
     });
     const initialLink = process.argv.find(arg => arg.toLowerCase().startsWith(`${scheme}://`));

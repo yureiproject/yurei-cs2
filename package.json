@@ -1,14 +1,15 @@
 {
   "name": "yurei-cs2-team",
-  "version": "1.0.22",
+  "version": "1.0.23",
   "description": "Yurei",
   "main": "desktop/main.cjs",
   "private": true,
   "author": "Yurei",
   "scripts": {
     "start": "electron .",
-    "dist:win": "electron-builder --win nsis --publish never",
-    "release:win": "electron-builder --win nsis --publish always"
+    "dist:win": "node scripts/generate-local-map-media.cjs && electron-builder --win nsis --publish never",
+    "release:win": "node scripts/generate-local-map-media.cjs && electron-builder --win nsis --publish always",
+    "prestart": "node scripts/generate-local-map-media.cjs"
   },
   "devDependencies": {
     "electron": "^41.0.0",
