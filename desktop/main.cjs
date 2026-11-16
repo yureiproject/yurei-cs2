@@ -54,11 +54,17 @@ function parseAuthCallback(deepLink) {
   } catch {
     return null;
   }
-  const isRecovery = callback.protocol === `${scheme}:` && callback.hostname === 'reset-password';
-  const isAuth = callback.protocol === `${scheme}:` && callback.hostname === 'auth' && callback.pathname === '/callback';
-  if (!isRecovery && !isAuth) return null;
+  const isResetRoute = callback.protocol === `${scheme}:` && callback.hostname === 'reset-password';
+  const isAuthRoute = callback.protocol === `${scheme}:` && callback.hostname === 'auth' && callback.pathname === '/callback';
+  if (!isResetRoute && !isAuthRoute) return null;
   const query = Object.fromEntries(callback.searchParams.entries());
+  const fragment = new URLSearchParams(callback.hash.replace(/^#/, ''));
   if (callback.hash) query.hash = callback.hash.slice(1);
+  // Supabase can redirect both confirmation and recovery links through the configured
+  // reset-password URI. Trust the OTP type when present so signup confirmations do
+  // not open the password-reset screen.
+  const otpType = query.type || fragment.get('type') || '';
+  const isRecovery = isResetRoute && (!otpType || otpType === 'recovery');
   query.yurei_callback = isRecovery ? 'recovery' : 'auth';
   return query;
 }
