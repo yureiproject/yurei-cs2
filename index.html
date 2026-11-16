@@ -331,10 +331,15 @@ function matchSides(payload, match) {
     ? faceitStats.flatMap(x => Array.isArray(x?.rounds) ? x.rounds : x?.round_stats ? [x] : [])
     : Array.isArray(faceitStats.rounds) ? faceitStats.rounds
     : Array.isArray(faceitStats.data?.rounds) ? faceitStats.data.rounds : [];
-  const statTeams = rounds[0]?.teams || [];
-  const statTeamRows = Array.isArray(statTeams)
-    ? statTeams
-    : Object.entries(statTeams).map(([key, value]) => ({ ...value, team_id: value?.team_id || key }));
+  const allStatTeamRows = rounds.flatMap(round => {
+    const teams = round?.teams || [];
+    return Array.isArray(teams) ? teams : Object.entries(teams).map(([key, value]) => ({ ...value, team_id: value?.team_id || key }));
+  });
+  const statTeamRows = allStatTeamRows;
+  const allStatPlayers = allStatTeamRows.flatMap(team => {
+    const roster = team?.players;
+    return Array.isArray(roster) ? roster : roster && typeof roster === 'object' ? Object.values(roster) : [];
+  });
   const teamEntries = value => value
     ? Array.isArray(value) ? value.map((team, i) => [String(team.team_number ?? team.team_id ?? team.id ?? i + 1), team])
       : Object.entries(value)
@@ -404,10 +409,20 @@ function matchSides(payload, match) {
     let group = byTeam.get(id) || byTeam.get(keyOf(teamKey)) || byTeam.get(String(index + 1)) || statTeamRows[index] || raw;
     // Leetify's score rows and player rows can use different team labels; if both sides are present, pair their groups by order.
     if ((!group.players || !group.players.length) && byTeam.size === 2) group = [...byTeam.values()][index];
-    let roster = group?.players || raw.players || [];
+    const hasRoster = value => Array.isArray(value) ? value.length > 0 : !!value && typeof value === 'object' && Object.keys(value).length > 0;
+    let roster = hasRoster(group?.players) ? group.players : hasRoster(raw.players) ? raw.players : raw.roster || [];
     if (!Array.isArray(roster)) roster = Object.values(roster);
     const playersData = roster.map(playerRow => {
-      const stats = playerRow.player_stats || playerRow.stats || playerRow;
+      const identity = playerRow || {};
+      const identityId = String(identity.player_id || identity.id || identity.steam64_id || identity.steam_id || '');
+      const identityNick = String(identity.nickname || identity.player_name || identity.username || identity.name || '').trim().toLowerCase();
+      const matchingStats = allStatPlayers.find(candidate => {
+        const candidateId = String(candidate?.player_id || candidate?.id || candidate?.steam64_id || candidate?.steam_id || '');
+        const candidateNick = String(candidate?.nickname || candidate?.player_name || candidate?.username || candidate?.name || '').trim().toLowerCase();
+        return (identityId && candidateId === identityId) || (identityNick && candidateNick === identityNick);
+      });
+      const statsRow = identity.player_stats || identity.stats ? identity : matchingStats || identity;
+      const stats = statsRow.player_stats || statsRow.stats || statsRow;
       const kills = matchNum(stats, ['kills', 'kill', 'total kills']);
       const deaths = matchNum(stats, ['deaths', 'death', 'total deaths']);
       const assists = matchNum(stats, ['assists', 'assist', 'total assists']);
@@ -415,9 +430,9 @@ function matchSides(payload, match) {
       let kd = matchNum(stats, ['k/d ratio', 'kd', 'kill death ratio']);
       if (kd === null && kills !== null && deaths > 0) kd = kills / deaths;
       const hs = matchHeadshotPercent(stats, kills);
-      const playerNick = String(playerRow.nickname || playerRow.name || playerRow.username || playerRow.player_name || playerRow.steam64_id || 'Joueur');
-      const own = !!((myId && String(playerRow.player_id || playerRow.id || '') === myId) ||
-        (mySteam && String(playerRow.steam64_id || playerRow.steam_id || '') === mySteam) ||
+      const playerNick = String(identity.nickname || identity.name || identity.username || identity.player_name || identity.steam64_id || statsRow.nickname || statsRow.name || 'Joueur');
+      const own = !!((myId && String(identity.player_id || identity.id || statsRow.player_id || '') === myId) ||
+        (mySteam && String(identity.steam64_id || identity.steam_id || statsRow.steam64_id || statsRow.steam_id || '') === mySteam) ||
         (myNick && playerNick.toLowerCase() === myNick));
       return { name: playerNick, own, kills, deaths, assists, kd, hs, rating,
         mvps: matchNum(stats, ['mvps', 'mvp', 'total mvps']),
